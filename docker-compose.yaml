@@ -1,0 +1,31 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "${PORT}:${PORT}"  # This maps the port from the .env file (e.g., 3003)
+    env_file:               # Load environment variables from .env
+      - .env
+    depends_on:
+      - database
+    environment:
+      - PORT=${PORT}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - MORALIS_API_KEY=${MORALIS_API_KEY}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
+
+  database:
+    image: postgres:latest
+    ports:
+      - "5433:5432"  # Local port 5433 to internal Postgres port 5432
+    env_file:        # Use the same .env file
+      - .env
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
