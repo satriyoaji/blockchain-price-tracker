@@ -1,9 +1,9 @@
 // src/repositories/alert.repository.ts
 import { Injectable } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import {LessThanOrEqual, Repository} from 'typeorm';
 import { Alert } from '../entities/alert.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import {AlertDto} from "../dto/alert.dto";
+import { AlertDto } from '../dtos/alert.dto';
 
 @Injectable()
 export class AlertRepository {
@@ -21,8 +21,12 @@ export class AlertRepository {
     return this.repository.find({ where: { chain } });
   }
 
-  async saveAlert(chain: string, alertPrice: number, email: string) {
-    const newAlert = this.repository.create({ chain, alertPrice, email });
+  async findAlerts(chain: string, currentPrice: number) {
+    return this.repository.find({ where: { chain, target_price: LessThanOrEqual(currentPrice) } });
+  }
+
+  async saveAlert(chain: string, targetPrice: number, email: string) {
+    const newAlert = this.repository.create({ chain, target_price: targetPrice, email });
     await this.repository.save(newAlert);
   }
 }

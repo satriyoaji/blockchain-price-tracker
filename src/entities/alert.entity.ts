@@ -10,7 +10,7 @@ export class Alert {
   chain: string;
 
   @Column('decimal')
-  alertPrice: number;
+  target_price: number;
 
   @Column()
   email: string;

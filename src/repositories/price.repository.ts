@@ -1,6 +1,6 @@
 // src/repositories/price.repository.ts
 import { Injectable } from '@nestjs/common';
-import { Repository, MoreThan } from 'typeorm';
+import { Repository, MoreThanOrEqual } from 'typeorm';
 import { Price } from '../entities/price.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -19,7 +19,7 @@ export class PriceRepository {
   async getHourlyPrices(chain: string) {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     return this.repository.find({
-      where: { chain, createdAt: MoreThan(twentyFourHoursAgo) },
+      where: { chain, createdAt: MoreThanOrEqual(twentyFourHoursAgo) },
       order: { createdAt: 'DESC' },
     });
   }

@@ -1,16 +1,19 @@
 // src/services/blockchain.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
-import { lastValueFrom } from 'rxjs';
+// import { lastValueFrom } from 'rxjs';
 import { PriceRepository } from '../repositories/price.repository';
 import { AlertRepository } from '../repositories/alert.repository';
 import { sendAlertEmail } from '../helpers/email.helper';
-import { AlertDto } from '../dto/alert.dto';
+import { AlertDto } from '../dtos/alert.dto';
+import Moralis from 'moralis';
 
 @Injectable()
-export class BlockchainService {
-  private moralisApiKey: string;
+export class BlockchainService implements OnModuleInit {
+  // private moralisApiKey: string;
+  private ethereumAddress: string;
+  private polygonAddress: string;
 
   constructor(
     private readonly configService: ConfigService,
@@ -18,38 +21,82 @@ export class BlockchainService {
     private readonly alertRepository: AlertRepository,
     private readonly httpService: HttpService,
   ) {
-    this.moralisApiKey = this.configService.get<string>('MORALIS_API_KEY');
+    // this.moralisApiKey = this.configService.get<string>('MORALIS_API_KEY');
+    this.ethereumAddress = this.configService.get<string>(
+      'ETHEREUM_TOKEN_ADDRESS',
+    );
+    this.polygonAddress = this.configService.get<string>(
+      'POLYGON_TOKEN_ADDRESS',
+    );
   }
 
+  async onModuleInit() {
+    // Initialize Moralis with the API key
+    await Moralis.start({
+      apiKey: this.configService.get<string>('MORALIS_API_KEY'),
+    });
+  }
+
+  async fetchAndSavePrice(chain: string) {
+    const address =
+      chain === 'ethereum' ? this.ethereumAddress : this.polygonAddress;
+    if (!address) {
+      throw new Error(`${chain} address not configured.`);
+    }
+    const chainId = chain === 'ethereum' ? '0x1' : '0x89'; // Ethereum or Polygon chain IDs
+
+    const response = await Moralis.EvmApi.token.getTokenPrice({
+      chain: chainId,
+      address: address,
+      include: 'percent_change',
+    });
+    console.log('API: ', chainId, address, response.raw);
+    const currentPrice = response.raw.usdPrice;
+
+    await this.priceRepository.savePrice(chain, currentPrice);
+
+    // Check and send alert if applicable
+    const alerts = await this.alertRepository.findAlerts(chain, currentPrice);
+    for (const alert of alerts) {
+      await sendAlertEmail(alert.email, chain, currentPrice);
+    }
+  }
+
+  // Method to retrieve hourly prices for the past 24 hours
+  async getHourlyPrices(chain: string) {
+    return this.priceRepository.getHourlyPrices(chain);
+  }
+
+  // Method to create a new price alert
   async createAlert(alertDto: AlertDto) {
     return this.alertRepository.createAlert(alertDto);
   }
 
-  async fetchPrice(chain: string): Promise<number> {
-    const response = await lastValueFrom(
-      this.httpService.get(`https://api.moralis.io/v2/${chain}/price`, {
-        headers: { 'X-API-Key': this.moralisApiKey },
-      }),
-    );
-    return response.data.price;
+  // Method to calculate ETH to BTC swap rate and fee
+  async calculateSwapRate(ethAmount: number) {
+    const ethToBtcRate = await this.fetchEthToBtcRate();
+    const btcEquivalent = ethAmount * ethToBtcRate;
+    const fee = ethAmount * 0.03; // 3% fee
+
+    return {
+      btcEquivalent,
+      feeInEth: fee,
+      feeInUsd: fee * (await this.fetchEthPriceInUsd()),
+    };
   }
 
-  async savePrice(chain: string) {
-    const price = await this.fetchPrice(chain);
-    await this.priceRepository.savePrice(chain, price);
-    this.checkAlerts(chain, price);
+  private async fetchEthToBtcRate(): Promise<number> {
+    // Example function to fetch ETH to BTC conversion rate
+    // Here we can use a Moralis API or other provider to fetch the current rate
+    return 0.055; // Placeholder value for ETH to BTC rate
   }
 
-  async checkAlerts(chain: string, price: number) {
-    const alerts = await this.alertRepository.findAlertsForChain(chain);
-    alerts.forEach(async (alert) => {
-      if (price >= alert.alertPrice) {
-        await sendAlertEmail(alert.email, chain, price);
-      }
+  private async fetchEthPriceInUsd(): Promise<number> {
+    // Example function to fetch the ETH price in USD
+    const response = await Moralis.EvmApi.token.getTokenPrice({
+      chain: '0x1',
+      address: this.ethereumAddress,
     });
-  }
-
-  async getHourlyPrices(chain: string) {
-    return this.priceRepository.getHourlyPrices(chain);
+    return response.raw.usdPrice;
   }
 }

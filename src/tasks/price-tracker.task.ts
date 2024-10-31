@@ -7,9 +7,9 @@ import { BlockchainService } from '../services/blockchain.service';
 export class PriceTrackerTask {
   constructor(private readonly blockchainService: BlockchainService) {}
 
-  @Cron('*/5 * * * *')
+  @Cron('*/5 * * * *') // Runs every 5 minutes
   async handlePriceTracking() {
-    await this.blockchainService.savePrice('ethereum');
-    await this.blockchainService.savePrice('polygon');
+    await this.blockchainService.fetchAndSavePrice('ethereum');
+    await this.blockchainService.fetchAndSavePrice('polygon');
   }
 }
