@@ -1,6 +1,6 @@
 // src/repositories/alert.repository.ts
 import { Injectable } from '@nestjs/common';
-import {FindOneOptions, LessThanOrEqual, Repository} from 'typeorm';
+import { LessThanOrEqual, Repository } from 'typeorm';
 import { Alert } from '../entities/alert.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 
