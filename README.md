@@ -30,6 +30,9 @@
 
 ```bash
 $ npm install
+
+# copy & adjust your own env variables
+$ cp .env.example .env
 ```
 
 ## Compile and run the project
@@ -43,6 +46,9 @@ $ npm run start:dev
 
 # production mode
 $ npm run start:prod
+
+# using Docker Container
+$ docker compose up --build
 ```
 
 ## Run tests
