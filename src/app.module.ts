@@ -28,6 +28,8 @@ import { AlertRepository } from './repositories/alert.repository';
         database: configService.get('DB_NAME'),
         entities: [Price, Alert],
         synchronize: true,
+        retryAttempts: 5,    // Retry up to 5 times
+        retryDelay: 2000,    // Wait 3 seconds between retries
       }),
       inject: [ConfigService],
     }),

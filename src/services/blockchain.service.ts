@@ -86,8 +86,7 @@ export class BlockchainService implements OnModuleInit {
   }
 
   private async fetchEthToBtcRate(): Promise<number> {
-    // Example function to fetch ETH to BTC conversion rate
-    // Here we can use a Moralis API or other provider to fetch the current rate
+    // Here we can use Web3 provider to fetch the current rate, but need the BTC Contract Address too
     return 0.055; // Placeholder value for ETH to BTC rate
   }
 
