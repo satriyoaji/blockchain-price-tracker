@@ -20,6 +20,7 @@ services:
       - POLYGON_TOKEN_ADDRESS=${POLYGON_TOKEN_ADDRESS}
       - EMAIL_USER=${EMAIL_USER}
       - EMAIL_PASS=${EMAIL_PASS}
+      - EMAIL_DESTINATION=${EMAIL_DESTINATION}
 
   database:
     image: postgres:latest

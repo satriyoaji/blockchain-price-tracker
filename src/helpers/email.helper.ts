@@ -25,5 +25,10 @@ export async function sendAlertEmail(
     text: `The price of ${chain} has reached ${price}.`,
   };
 
-  await transporter.sendMail(mailOptions);
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true, message: 'Email sent successfully.' };
+  } catch (error) {
+    return { success: false, message: `Failed to send email: ${error.message}` };
+  }
 }

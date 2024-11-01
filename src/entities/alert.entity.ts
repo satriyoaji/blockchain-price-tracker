@@ -9,9 +9,12 @@ export class Alert {
   @Column()
   chain: string;
 
-  @Column('decimal')
-  target_price: number;
+  @Column({ name: 'target_price', type: 'decimal' })
+  targetPrice: number;
 
   @Column()
   email: string;
+
+  @Column({ name: 'is_sent', default: false })
+  isSent?: boolean;
 }

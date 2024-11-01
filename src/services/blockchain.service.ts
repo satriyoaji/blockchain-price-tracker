@@ -38,6 +38,9 @@ export class BlockchainService implements OnModuleInit {
   }
 
   async fetchAndSavePrice(chain: string) {
+    if (chain !== 'ethereum' && chain !== 'polygon') {
+      throw new Error(`${chain} is not recognized.`);
+    }
     const address =
       chain === 'ethereum' ? this.ethereumAddress : this.polygonAddress;
     if (!address) {
@@ -45,6 +48,10 @@ export class BlockchainService implements OnModuleInit {
     }
     const chainId = chain === 'ethereum' ? '0x1' : '0x89'; // Ethereum or Polygon chain IDs
 
+    // const response = await Moralis.EvmApi.balance.getNativeBalance({
+    //   address: address,
+    //   chain: chainId
+    // });
     const response = await Moralis.EvmApi.token.getTokenPrice({
       chain: chainId,
       address: address,
@@ -55,21 +62,83 @@ export class BlockchainService implements OnModuleInit {
 
     await this.priceRepository.savePrice(chain, currentPrice);
 
+    const priceRecordAnHourAgo = await this.priceRepository.getHourlyPrices(
+      chain,
+      1,
+    );
+    if (!priceRecordAnHourAgo) return;
+    for (const priceRecord of priceRecordAnHourAgo) {
+      if (priceRecord.price > (currentPrice  * 1.03)){
+        // create Alert
+        const alertDto: AlertDto = {
+          chain: chain === 'ethereum' ? 'ethereum' : 'polygon',
+          email: this.configService.get<string>('EMAIL_DESTINATION'),
+          dollar: priceRecord.price,
+        };
+
+        // send email
+        const emailResult = await sendAlertEmail(
+          alertDto.email,
+          alertDto.chain,
+          alertDto.dollar,
+        );
+        if (emailResult.success) {
+          console.log(emailResult.message);
+
+          this.alertRepository.saveAlert(
+            alertDto.chain,
+            alertDto.dollar,
+            alertDto.email,
+            true,
+          );
+        } else {
+          // Failed to send email
+          console.error(emailResult.message);
+
+          this.alertRepository.saveAlert(
+            alertDto.chain,
+            alertDto.dollar,
+            alertDto.email,
+            false,
+          );
+        }
+      }
+    }
+  }
+
+  // this method will automatically Notify via Email if any Alert data that not sent yet
+  async alertEmail(chain: string) {
     // Check and send alert if applicable
-    const alerts = await this.alertRepository.findAlerts(chain, currentPrice);
-    for (const alert of alerts) {
-      await sendAlertEmail(alert.email, chain, currentPrice);
+    const alertsNotSentYet = await this.alertRepository.findAlertsNotSentYet(chain);
+    for (const alert of alertsNotSentYet) {
+      const emailResult = await sendAlertEmail(
+        alert.email,
+        chain,
+        alert.targetPrice,
+      );
+      if (emailResult.success) {
+        console.log(emailResult.message);
+        await this.alertRepository.updateIsSentById(alert.id, true);
+      } else {
+        console.error(emailResult.message);
+        // Handle failure, like retrying or logging
+      }
     }
   }
 
   // Method to retrieve hourly prices for the past 24 hours
   async getHourlyPrices(chain: string) {
-    return this.priceRepository.getHourlyPrices(chain);
+    return this.priceRepository.getHourlyPrices(chain, 24);
   }
 
   // Method to create a new price alert
   async createAlert(alertDto: AlertDto) {
-    return this.alertRepository.createAlert(alertDto);
+    return this.alertRepository.saveAlert(
+      alertDto.chain,
+      alertDto.dollar,
+      alertDto.email,
+      false,
+    );
   }
 
   // Method to calculate ETH to BTC swap rate and fee
